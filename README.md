@@ -20,7 +20,9 @@ After installation you should see a new service and deployment:
 ```bash
 kubectl get svc proxy-service -n modelmesh-serving
 
-proxy-service                   NodePort    10.101.137.44   <none>        8080:32189/TCP      2m
+NAME            TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+proxy-service   NodePort   10.101.137.44   <none>        8080:32189/TCP   2m
+
 ```
 
 ```bash
@@ -37,10 +39,10 @@ from [here](https://github.com/kserve/modelmesh-serving/tree/main/docs#3-perform
 now do something like:
 
 ```bash
-curl -X POST -k http://192.168.49.2:32189/v2/models/example-sklearn-mnist-svm/infer -d '{ "inputs": [{ "name": "predict", "shape": [1, 64], "datatype": "FP32", "contents": { "fp32_contents": [0.0, 0.0, 1.0, 11.0, 14.0, 15.0, 3.0, 0.0, 0.0, 1.0, 13.0, 16.0, 12.0, 16.0, 8.0, 0.0, 0.0, 8.0, 16.0, 4.0, 6.0, 16.0, 5.0, 0.0, 0.0, 5.0, 15.0, 11.0, 13.0, 14.0, 0.0, 0.0, 0.0, 0.0, 2.0, 12.0, 16.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 13.0, 16.0, 16.0, 6.0, 0.0, 0.0, 0.0, 0.0, 16.0, 16.0, 16.0, 7.0, 0.0, 0.0, 0.0, 0.0, 11.0, 13.0, 12.0, 1.0, 0.0] }}]}'
+curl -X POST -k http://192.168.49.2:32189/v2/models/example-mnist-predictor/infer -d '{ "inputs": [{ "name": "predict", "shape": [1, 64], "datatype": "FP32", "contents": { "fp32_contents": [0.0, 0.0, 1.0, 11.0, 14.0, 15.0, 3.0, 0.0, 0.0, 1.0, 13.0, 16.0, 12.0, 16.0, 8.0, 0.0, 0.0, 8.0, 16.0, 4.0, 6.0, 16.0, 5.0, 0.0, 0.0, 5.0, 15.0, 11.0, 13.0, 14.0, 0.0, 0.0, 0.0, 0.0, 2.0, 12.0, 16.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 13.0, 16.0, 16.0, 6.0, 0.0, 0.0, 0.0, 0.0, 16.0, 16.0, 16.0, 7.0, 0.0, 0.0, 0.0, 0.0, 11.0, 13.0, 12.0, 1.0, 0.0] }}]}'
 
 
-{"modelName":"example-sklearn-mnist-svm__ksp-7702c1b55a","modelVersion":"","id":"","parameters":{},"outputs":[{"name":"predict","datatype":"FP32","shape":["1"],"parameters":{},"contents":{"boolContents":[],"intContents":[],"int64Contents":[],"uintContents":[],"uint64Contents":[],"fp32Contents":[8],"fp64Contents":[],"bytesContents":[]}}],"rawOutputContents":[]}
+{"modelName":"example-mnist-predictor__ksp-7702c1b55a","modelVersion":"","id":"","parameters":{},"outputs":[{"name":"predict","datatype":"FP32","shape":["1"],"parameters":{},"contents":{"boolContents":[],"intContents":[],"int64Contents":[],"uintContents":[],"uint64Contents":[],"fp32Contents":[8],"fp64Contents":[],"bytesContents":[]}}],"rawOutputContents":[]}
 ```
 
 Note that the port is the NodePort of the `modelmesh-proxy` service, and the Node IP or Ingress Subdomain of your cluster.
