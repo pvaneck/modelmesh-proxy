@@ -9,6 +9,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	gw "github.com/pvaneck/modelmesh-proxy/gen"
 )
@@ -26,7 +27,13 @@ func run() error {
 
 	// Register gRPC server endpoint
 	// Note: Make sure the gRPC server is running properly and accessible
-	mux := runtime.NewServeMux()
+	mux := runtime.NewServeMux(
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
+			MarshalOptions: protojson.MarshalOptions{
+				EmitUnpopulated: false,
+			},
+		}),
+	)
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithBlock(),
@@ -38,7 +45,7 @@ func run() error {
 		return err
 	}
 
-	fmt.Println("Starting Server...")
+	fmt.Println("Starting Reverse-Proxy Server...")
 	// Start HTTP server (and proxy calls to gRPC server endpoint)
 	return http.ListenAndServe(":8080", mux)
 }

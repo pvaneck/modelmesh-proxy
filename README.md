@@ -42,7 +42,7 @@ now do something like:
 curl -X POST -k http://192.168.49.2:32189/v2/models/example-mnist-predictor/infer -d '{ "inputs": [{ "name": "predict", "shape": [1, 64], "datatype": "FP32", "contents": { "fp32_contents": [0.0, 0.0, 1.0, 11.0, 14.0, 15.0, 3.0, 0.0, 0.0, 1.0, 13.0, 16.0, 12.0, 16.0, 8.0, 0.0, 0.0, 8.0, 16.0, 4.0, 6.0, 16.0, 5.0, 0.0, 0.0, 5.0, 15.0, 11.0, 13.0, 14.0, 0.0, 0.0, 0.0, 0.0, 2.0, 12.0, 16.0, 13.0, 0.0, 0.0, 0.0, 0.0, 0.0, 13.0, 16.0, 16.0, 6.0, 0.0, 0.0, 0.0, 0.0, 16.0, 16.0, 16.0, 7.0, 0.0, 0.0, 0.0, 0.0, 11.0, 13.0, 12.0, 1.0, 0.0] }}]}'
 
 
-{"modelName":"example-mnist-predictor__ksp-7702c1b55a","modelVersion":"","id":"","parameters":{},"outputs":[{"name":"predict","datatype":"FP32","shape":["1"],"parameters":{},"contents":{"boolContents":[],"intContents":[],"int64Contents":[],"uintContents":[],"uint64Contents":[],"fp32Contents":[8],"fp64Contents":[],"bytesContents":[]}}],"rawOutputContents":[]}
+{"modelName":"example-mnist-predictor__ksp-7702c1b55a","outputs":[{"name":"predict","datatype":"FP32","shape":["1"],"contents":{"fp32Contents":[8]}}]}
 ```
 
 Note that the port is the NodePort of the `modelmesh-proxy` service, and the Node IP or Ingress Subdomain of your cluster.
