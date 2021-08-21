@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: modelmesh-proxy
+  labels:
+    app: modelmesh-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: modelmesh-proxy
+  template:
+    metadata:
+      labels:
+        app: modelmesh-proxy
+    spec:
+      containers:
+      - name: proxy
+        image: rest-proxy:replace
+        ports:
+        - containerPort: 8080
+          name: gateway

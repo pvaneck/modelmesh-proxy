@@ -1,0 +1,9 @@
+resources:
+  - deployment.yaml
+  - service.yaml
+
+images:
+  - name: rest-proxy
+    newName: pvaneckw/rest-proxy
+    ## NOTE THIS SHOULD BE REPLACED WITH LATEST CONTROLLER IMAGE TAG
+    newTag: latest
