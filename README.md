@@ -20,7 +20,7 @@ After installation you should see a new service and deployment:
 ```bash
 kubectl get svc modelmesh-proxy  -n modelmesh-serving
 
-NAME            TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+NAME               TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
 modelmesh-proxy    NodePort   10.101.137.44   <none>        8080:32189/TCP   2m
 
 ```
