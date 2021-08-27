@@ -9,7 +9,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	gw "github.com/pvaneck/modelmesh-proxy/gen"
 )
@@ -25,14 +24,13 @@ func run() error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	marshaller := &CustomJSONPb{}
+	marshaller.EmitUnpopulated = false
+	marshaller.DiscardUnknown = false
+
 	// Register gRPC server endpoint
-	// Note: Make sure the gRPC server is running properly and accessible
 	mux := runtime.NewServeMux(
-		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
-			MarshalOptions: protojson.MarshalOptions{
-				EmitUnpopulated: false,
-			},
-		}),
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, marshaller),
 	)
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),

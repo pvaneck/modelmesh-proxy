@@ -49,6 +49,9 @@ service GRPCInferenceService
   rpc ModelInfer(ModelInferRequest) returns (ModelInferResponse) {
     option (google.api.http) = {
       post: "/v2/models/{model_name}/infer"
+      additional_bindings {
+        post: "/v2/models/{model_name}/versions/{model_version}/infer"
+      }
       body: "*"
     };
   }
