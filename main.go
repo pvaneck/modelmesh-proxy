@@ -44,6 +44,7 @@ func run() error {
 	}
 
 	fmt.Println("Starting Reverse-Proxy Server...")
+
 	// Start HTTP server (and proxy calls to gRPC server endpoint)
 	return http.ListenAndServe(":8080", mux)
 }

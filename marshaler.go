@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,10 +39,28 @@ type CustomJSONPb struct {
 	runtime.JSONPb
 }
 
+// Sizes of each type in bytes.
+var typeSizes = map[string]int64{
+	"BOOL":   1,
+	"UINT8":  1,
+	"UINT16": 2,
+	"UINT32": 4,
+	"UINT64": 8,
+	"INT8":   1,
+	"INT16":  2,
+	"INT32":  4,
+	"INT64":  8,
+	"FP16":   2,
+	"FP32":   4,
+	"FP64":   8,
+	"BYTES":  1,
+}
+
+// This function adjusts the gRPC response before marshaling and
+// returning to the user.
 func (c *CustomJSONPb) Marshal(v interface{}) ([]byte, error) {
 	var err error
 	var j []byte
-
 	switch v.(type) {
 	case *gw.ModelInferResponse:
 		r, ok := v.(*gw.ModelInferResponse)
@@ -51,42 +71,122 @@ func (c *CustomJSONPb) Marshal(v interface{}) ([]byte, error) {
 			resp.Id = r.Id
 			resp.Parameters = r.Parameters
 
-			for _, output := range r.Outputs {
+			for i, output := range r.Outputs {
 				tensor := Tensor{}
 				tensor.Name = output.Name
 				tensor.Datatype = output.Datatype
 				tensor.Shape = output.Shape
 				tensor.Parameters = output.Parameters
 
+				var numElements int64 = 1
+				for j := range tensor.Shape {
+					numElements = tensor.Shape[j] * numElements
+				}
+
 				var data interface{}
 				switch tensor.Datatype {
 				case "BOOL":
-					data = output.Contents.BoolContents
-				case "UINT8", "UINT16", "UINT32":
-					data = output.Contents.UintContents
+					if r.RawOutputContents == nil {
+						data = output.Contents.BoolContents
+					} else {
+						outputData := make([]bool, numElements)
+						readBytes(r.RawOutputContents[i], &outputData, 0, typeSizes[tensor.Datatype], numElements)
+						data = outputData
+					}
+				case "UINT8":
+					if r.RawOutputContents == nil {
+						data = output.Contents.UintContents
+					} else {
+						outputData := make([]uint8, numElements)
+						readBytes(r.RawOutputContents[i], &outputData, 0, typeSizes[tensor.Datatype], numElements)
+						data = outputData
+					}
+				case "UINT16":
+					if r.RawOutputContents == nil {
+						data = output.Contents.UintContents
+					} else {
+						outputData := make([]uint16, numElements)
+						readBytes(r.RawOutputContents[i], &outputData, 0, typeSizes[tensor.Datatype], numElements)
+						data = outputData
+					}
+				case "UINT32":
+					if r.RawOutputContents == nil {
+						data = output.Contents.UintContents
+					} else {
+						outputData := make([]uint32, numElements)
+						readBytes(r.RawOutputContents[i], &outputData, 0, typeSizes[tensor.Datatype], numElements)
+						data = outputData
+					}
 				case "UINT64":
-					data = output.Contents.Uint64Contents
-				case "INT8", "INT16", "INT32":
-					data = output.Contents.IntContents
+					if r.RawOutputContents == nil {
+						data = output.Contents.Uint64Contents
+					} else {
+						outputData := make([]uint64, numElements)
+						readBytes(r.RawOutputContents[i], &outputData, 0, typeSizes[tensor.Datatype], numElements)
+						data = outputData
+					}
+				case "INT8":
+					if r.RawOutputContents == nil {
+						data = output.Contents.IntContents
+					} else {
+						outputData := make([]int8, numElements)
+						readBytes(r.RawOutputContents[i], &outputData, 0, typeSizes[tensor.Datatype], numElements)
+						data = outputData
+					}
+				case "INT16":
+					if r.RawOutputContents == nil {
+						data = output.Contents.IntContents
+					} else {
+						outputData := make([]int16, numElements)
+						readBytes(r.RawOutputContents[i], &outputData, 0, typeSizes[tensor.Datatype], numElements)
+						data = outputData
+					}
+				case "INT32":
+					if r.RawOutputContents == nil {
+						data = output.Contents.IntContents
+					} else {
+						outputData := make([]int32, numElements)
+						readBytes(r.RawOutputContents[i], &outputData, 0, typeSizes[tensor.Datatype], numElements)
+						data = outputData
+					}
 				case "INT64":
-					data = output.Contents.Int64Contents
+					if r.RawOutputContents == nil {
+						data = output.Contents.Int64Contents
+					} else {
+						outputData := make([]int64, numElements)
+						readBytes(r.RawOutputContents[i], &outputData, 0, typeSizes[tensor.Datatype], numElements)
+						data = outputData
+					}
 				case "FP16":
 					// TODO: Relies on raw_input_contents
 				case "FP32":
-					data = output.Contents.Fp32Contents
+					if r.RawOutputContents == nil {
+						data = output.Contents.Fp32Contents
+					} else {
+						outputData := make([]float32, numElements)
+						readBytes(r.RawOutputContents[i], &outputData, 0, typeSizes[tensor.Datatype], numElements)
+						data = outputData
+					}
 				case "FP64":
-					data = output.Contents.Fp64Contents
+					if r.RawOutputContents == nil {
+						data = output.Contents.Fp64Contents
+					} else {
+						outputData := make([]float64, numElements)
+						readBytes(r.RawOutputContents[i], &outputData, 0, typeSizes[tensor.Datatype], numElements)
+						data = outputData
+					}
 				case "BYTES":
-					data = output.Contents.BytesContents
+					if r.RawOutputContents == nil {
+						data = output.Contents.BytesContents
+					} else {
+						data = r.RawOutputContents[i]
+					}
 				default:
 					return nil, fmt.Errorf("Unsupported Datatype in inference response outputs")
 				}
 
 				tensor.Data = data
 				resp.Outputs = append(resp.Outputs, tensor)
-
-				// TODO(pvaneck): Handle the cases when RawOutputContents
-				// is specified.
 
 				j, err = c.JSONPb.Marshal(resp)
 			}
@@ -101,6 +201,8 @@ func (c *CustomJSONPb) Marshal(v interface{}) ([]byte, error) {
 	return j, nil
 }
 
+// This function adjusts the user input before a gRPC message is sent to the
+// server.
 func (c *CustomJSONPb) NewDecoder(r io.Reader) runtime.Decoder {
 	return runtime.DecoderFunc(func(v interface{}) error {
 		req, ok := v.(*gw.ModelInferRequest)
@@ -119,9 +221,10 @@ func (c *CustomJSONPb) NewDecoder(r io.Reader) runtime.Decoder {
 			req.Parameters = restReq.Parameters
 			req.Outputs = restReq.Outputs
 
-			// TODO: Figure out better/cleaner way to do type coercion.
+			// TODO: Figure out better/cleaner way to do type coercion?
+			// TODO: Flatten N-Dimensional data arrays.
 
-			for _, input := range restReq.Inputs {
+			for index, input := range restReq.Inputs {
 				tensor := &gw.ModelInferRequest_InferInputTensor{
 					Name:       input.Name,
 					Datatype:   input.Datatype,
@@ -180,7 +283,7 @@ func (c *CustomJSONPb) NewDecoder(r io.Reader) runtime.Decoder {
 					data := make([][]byte, 1)
 					data[0] = make([]byte, len(d))
 					for i := range d {
-						data[0][i] = byte(d[i].(float64))
+						data[index][i] = byte(d[i].(float64))
 					}
 					tensor.Contents = &gw.InferTensorContents{BytesContents: data}
 				default:
@@ -192,4 +295,12 @@ func (c *CustomJSONPb) NewDecoder(r io.Reader) runtime.Decoder {
 		}
 		return c.JSONPb.NewDecoder(r).Decode(v)
 	})
+}
+
+// This function is used for processing RawOutputContents byte array.
+func readBytes(dataBytes []byte, data interface{}, index int, size int64, numElements int64) error {
+	start := int64(index) * numElements * size
+	buf := bytes.NewBuffer(dataBytes[start : start+numElements*size])
+	binary.Read(buf, binary.LittleEndian, data)
+	return nil
 }
