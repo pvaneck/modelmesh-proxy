@@ -5,10 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 
-	"github.com/golang/glog"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	gw "github.com/pvaneck/modelmesh-proxy/gen"
 )
@@ -16,7 +18,9 @@ import (
 var (
 	// command-line options:
 	// gRPC server endpoint
-	grpcServerEndpoint = flag.String("grpc-server-endpoint", "dns:///modelmesh-serving:8033", "gRPC server endpoint")
+	grpcServerEndpoint = flag.String("grpc-server-endpoint", "localhost:8033", "gRPC server endpoint")
+	logger             = zap.New()
+	listenPort         = 8008
 )
 
 func run() error {
@@ -35,25 +39,31 @@ func run() error {
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithBlock(),
-		grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy":"round_robin"}`),
 	}
-	fmt.Println("Registering GRPC Inference Service Handler...")
+	logger.Info("Registering gRPC Inference Service Handler...")
 	err := gw.RegisterGRPCInferenceServiceHandlerFromEndpoint(ctx, mux, *grpcServerEndpoint, opts)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Starting Reverse-Proxy Server...")
+	if port, ok := os.LookupEnv("LISTEN_PORT"); ok {
+		listenPort, err = strconv.Atoi(port)
+		if err != nil {
+			logger.Error(err, "unable to parse LISTEN_PORT environment variable")
+			os.Exit(1)
+		}
+	}
+	logger.Info(fmt.Sprintf("Listening on port %d", listenPort))
 
 	// Start HTTP server (and proxy calls to gRPC server endpoint)
-	return http.ListenAndServe(":8080", mux)
+	return http.ListenAndServe(fmt.Sprintf(":%d", listenPort), mux)
 }
 
 func main() {
 	flag.Parse()
-	defer glog.Flush()
 
 	if err := run(); err != nil {
-		glog.Fatal(err)
+		logger.Error(err, "unable to start gRPC REST proxy")
+		os.Exit(1)
 	}
 }

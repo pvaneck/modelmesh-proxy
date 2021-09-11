@@ -13,4 +13,4 @@ FROM scratch
 ARG USER=2000
 
 COPY --from=builder /go/bin/server /go/bin/server
-ENTRYPOINT ["/go/bin/server"]
+CMD ["/go/bin/server"]

@@ -207,6 +207,7 @@ func (c *CustomJSONPb) NewDecoder(r io.Reader) runtime.Decoder {
 	return runtime.DecoderFunc(func(v interface{}) error {
 		req, ok := v.(*gw.ModelInferRequest)
 		if ok {
+			logger.Info("Received REST inference request")
 			raw, err := ioutil.ReadAll(r)
 			if err != nil {
 				return err
