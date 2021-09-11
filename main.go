@@ -28,13 +28,13 @@ func run() error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	marshaller := &CustomJSONPb{}
-	marshaller.EmitUnpopulated = false
-	marshaller.DiscardUnknown = false
+	marshaler := &CustomJSONPb{}
+	marshaler.EmitUnpopulated = false
+	marshaler.DiscardUnknown = false
 
 	// Register gRPC server endpoint
 	mux := runtime.NewServeMux(
-		runtime.WithMarshalerOption(runtime.MIMEWildcard, marshaller),
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, marshaler),
 	)
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
