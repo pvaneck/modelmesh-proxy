@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"flag"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,20 +10,29 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	gw "github.com/pvaneck/modelmesh-proxy/gen"
 )
 
+const (
+	restProxyPortEnvVar     = "MM_REST_PROXY_LISTEN_PORT"
+	restProxyGrpcPortEnvVar = "MM_REST_PROXY_GRPC_PORT"
+	restProxyTlsEnvVar      = "MM_REST_PROXY_USE_TLS"
+	tlsCertEnvVar           = "MM_TLS_KEY_CERT_PATH"
+	tlsKeyEnvVar            = "MM_TLS_PRIVATE_KEY_PATH"
+)
+
 var (
-	// command-line options:
-	// gRPC server endpoint
-	grpcServerEndpoint = flag.String("grpc-server-endpoint", "localhost:8033", "gRPC server endpoint")
-	logger             = zap.New()
-	listenPort         = 8008
+	grpcServerEndpoint   = "localhost"
+	inferenceServicePort = 8033
+	logger               = zap.New()
+	listenPort           = 8008
 )
 
 func run() error {
+	logger.Info("Starting REST Proxy...")
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -36,32 +45,61 @@ func run() error {
 	mux := runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, marshaler),
 	)
-	opts := []grpc.DialOption{
-		grpc.WithInsecure(),
-		grpc.WithBlock(),
+
+	var opts = []grpc.DialOption{}
+	if useTLS, ok := os.LookupEnv(restProxyTlsEnvVar); ok && useTLS == "true" {
+		logger.Info("Using TLS")
+		config := &tls.Config{
+			InsecureSkipVerify: true,
+		}
+		opts = []grpc.DialOption{
+			grpc.WithTransportCredentials(credentials.NewTLS(config)),
+			grpc.WithBlock(),
+		}
+	} else {
+		logger.Info("Not using TLS")
+		opts = []grpc.DialOption{
+			grpc.WithInsecure(),
+			grpc.WithBlock(),
+		}
 	}
-	logger.Info("Registering gRPC Inference Service Handler...")
-	err := gw.RegisterGRPCInferenceServiceHandlerFromEndpoint(ctx, mux, *grpcServerEndpoint, opts)
+
+	if port, ok := os.LookupEnv(restProxyGrpcPortEnvVar); ok {
+		grpcPort, err := strconv.Atoi(port)
+		if err != nil {
+			logger.Error(err, "unable to parse gRPC port environment variable")
+			os.Exit(1)
+		}
+		inferenceServicePort = grpcPort
+	}
+
+	logger.Info("Registering gRPC Inference Service Handler", "Host", grpcServerEndpoint, "Port", inferenceServicePort)
+	err := gw.RegisterGRPCInferenceServiceHandlerFromEndpoint(
+		ctx, mux, fmt.Sprintf("%s:%d", grpcServerEndpoint, inferenceServicePort), opts)
 	if err != nil {
 		return err
 	}
 
-	if port, ok := os.LookupEnv("LISTEN_PORT"); ok {
+	if port, ok := os.LookupEnv(restProxyPortEnvVar); ok {
 		listenPort, err = strconv.Atoi(port)
 		if err != nil {
-			logger.Error(err, "unable to parse LISTEN_PORT environment variable")
+			logger.Error(err, "unable to parse port environment variable")
 			os.Exit(1)
 		}
 	}
-	logger.Info(fmt.Sprintf("Listening on port %d", listenPort))
 
 	// Start HTTP server (and proxy calls to gRPC server endpoint)
+
+	if certPath, ok := os.LookupEnv(tlsCertEnvVar); ok {
+		keyPath := os.Getenv(tlsKeyEnvVar)
+		logger.Info(fmt.Sprintf("Listening on port %d with TLS", listenPort))
+		return http.ListenAndServeTLS(fmt.Sprintf(":%d", listenPort), certPath, keyPath, mux)
+	}
+	logger.Info(fmt.Sprintf("Listening on port %d", listenPort))
 	return http.ListenAndServe(fmt.Sprintf(":%d", listenPort), mux)
 }
 
 func main() {
-	flag.Parse()
-
 	if err := run(); err != nil {
 		logger.Error(err, "unable to start gRPC REST proxy")
 		os.Exit(1)
